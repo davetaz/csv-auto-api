@@ -5,33 +5,35 @@ var json2csv = require('json2csv'); // Library to create CSV for output
 
 const app = express(); // Initialise the REST app
 
-var rows = []; // Create an array to store the rows from our CSV data
-
-/*
- * Ensure that the user has defined a csv file to load!
- */
-if (process.argv.length < 3) {
-	console.log('No input files specified!');
-	process.exit();
-}
-
-/*
- * Itterate over each file and call loadFile() to load it
- */
-for (i=2;i<process.argv.length;i++) {
-	file = process.argv[i];
-	loadFile(file);
-}
-
+var database = []; // Create an array to store the rows from our CSV data
 /*
  * The function that loads the file into our rows object
  */
-function loadFile(file) {
+function loadFile(file,input) {
 	console.log(file + " loading...");
+	if (typeof database[input] == 'undefined') {
+		database[input] = [];
+	}
+    rows = database[input];
 	getCSV(file, function(err,data) {
-	    rows = rows.concat(data);
+	    database[input] = database[input].concat(data);
 	    console.log(file + " loaded");
 	});
+}
+
+function loadFileLink(file,input,url_prefix,column,new_column) {
+    console.log(file + " loading...");
+    if (typeof database[input] == 'undefined') {
+        database[input] = [];
+    }
+    rows = database[input];
+    getCSV(file, function(err,data) {
+        data.forEach(function(item) {
+            item[new_column] = url_prefix + input + "/" + column + "/" + item[column];
+        });
+        database[input] = database[input].concat(data);
+        console.log(file + " loaded linked");
+    });
 }
 
 /* 
@@ -39,6 +41,7 @@ function loadFile(file) {
  */
 function handleRequest(req,res) {
     // Get the path they have asked for and the file type.
+    prefix = req.params["prefix"];
     heading = req.params["column_heading"];
     value = req.params["value"];
 
@@ -47,9 +50,14 @@ function handleRequest(req,res) {
     if (heading) {
         filter[heading] = value;
     }
+    
+    // Protect the user from a massive file download!
+    if (prefix == "LFB" && Object.keys(filter).length === 0) {
+        res.status(400).send('This dataset is too large to serve all of it in one request');
+    }
 
     // Filter the data according to the request to only contain relevant rows
-    result = rows;
+    result = database[prefix];
     result = result.filter(function(item) {
     for(var key in filter) {
         if(item[key] === undefined || item[key] != filter[key])
@@ -62,7 +70,12 @@ function handleRequest(req,res) {
     ext = req.params["ext"];
     // If there is no extension specified then manage it via content negoition, yay!
     if (!ext) {
-        ext = req.accepts(['json','csv','html']);
+        accepts = req.accepts(['json','csv','html']);
+        if (accepts == "html" && value != undefined && Object.keys(req.query).length === 0) {
+            res.redirect(301,req.originalUrl + ".html");
+        } else {
+            ext = accepts;
+        }
     }
 
     // Return the data to the user in a format they asked for
@@ -73,7 +86,7 @@ function handleRequest(req,res) {
     } else if (ext == "json") {
         res.set('Content-Type', 'application/json');
         res.send(JSON.stringify(result,null,4));
-    } else {
+    } else if (ext == "html") {
         ejs.renderFile(__dirname + '/page.html', { path: req.path, query: req.query }, function(err,data) {
             res.send(data);
         });
@@ -81,11 +94,22 @@ function handleRequest(req,res) {
 };
 
 /*
+ * Load the data
+ */
+loadFileLink('data/RailReferences.csv','NAPTAN',"http://localhost:3000/","CrsCode","CrsCodeURI");
+loadFile('data/HFStarRating6Regions-clean.csv','Tanzania');
+//loadFile('data/2009-2012.csv','LFB');
+//loadFile('data/2013-2016.csv','LFB');
+loadFile('data/2017.csv','LFB');
+
+/*
  * Set the available REST endpoints and how to handle them
  */
 app.get('/', function(req,res) { handleRequest(req,res); });
-app.get('/:column_heading/:value.:ext', function(req,res) { handleRequest(req,res); });
-app.get('/:column_heading/:value', function(req,res) { handleRequest(req,res); });
+app.get('/:prefix', function(req,res) { handleRequest(req,res); });
+app.get('/:prefix/', function(req,res) { handleRequest(req,res); });
+app.get('/:prefix/:column_heading/:value.:ext', function(req,res) { handleRequest(req,res); });
+app.get('/:prefix/:column_heading/:value', function(req,res) { handleRequest(req,res); });
 
 /*
  * Start the app!

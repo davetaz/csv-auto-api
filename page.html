@@ -10,8 +10,11 @@
 	<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.4.2/js/dataTables.buttons.min.js"></script>
 	<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.4.2/js/buttons.bootstrap.min.js"></script>
 	<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.4.2/js/buttons.html5.min.js"></script>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-linkify/2.1.5/linkify.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-linkify/2.1.5/linkify-jquery.min.js"></script>
 </head>
-<body>
+<body style="overflow-y: scroll;">
 	<table id="datatable" class="table table-striped table-bordered" cellspacing="0" width="100%">
 		<thead>
 			<tr id="headers">
@@ -25,6 +28,7 @@
 
 		query = <%- JSON.stringify(query) %>;
 		path = "<%= path %>";
+		path = path.replace(".html","");
 		query_params = [];
 		Object.keys(query).forEach(function(key,index) {
 			query_params.push(encodeURIComponent(key) + "=" + encodeURIComponent(query[key]));
@@ -54,6 +58,7 @@
 				"dom": 'Bfrtip',
 				"buttons": ["copy","csv","pdf"]
 			});
+			$('#datatable').linkify();
 		});
 		
 	});
