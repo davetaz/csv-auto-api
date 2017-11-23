@@ -96,22 +96,25 @@ function handleRequest(req,res) {
 /*
  * Load the data
  */
-loadFileLink('data/RailReferences.csv','NAPTAN',"http://localhost:3000/","CrsCode","CrsCodeURI");
-loadFile('data/HFStarRating6Regions-clean.csv','Tanzania');
-//loadFile('data/2009-2012.csv','LFB');
-//loadFile('data/2013-2016.csv','LFB');
-loadFile('data/2017.csv','LFB');
+loadFileLink(__dirname + '/data/RailReferences.csv','NAPTAN',"http://api-demo.learndata.info/","CrsCode","CrsCodeURI");
+loadFile(__dirname + '/data/HFStarRating6Regions-clean.csv','Tanzania');
+loadFile(__dirname + '/data/2009-2012.csv','LFB');
+loadFile(__dirname + '/data/2013-2016.csv','LFB');
+loadFile(__dirname + '/data/2017.csv','LFB');
 
 /*
  * Set the available REST endpoints and how to handle them
  */
-app.get('/', function(req,res) { handleRequest(req,res); });
+app.get('/', function(req,res) { res.redirect(301,'https://learndata.info'); });
 app.get('/:prefix', function(req,res) { handleRequest(req,res); });
 app.get('/:prefix/', function(req,res) { handleRequest(req,res); });
 app.get('/:prefix/:column_heading/:value.:ext', function(req,res) { handleRequest(req,res); });
 app.get('/:prefix/:column_heading/:value', function(req,res) { handleRequest(req,res); });
+app.use(function (req, res, next) {
+  res.status(404).send("Sorry can't find that!")
+})
 
 /*
  * Start the app!
  */
-app.listen(3000, () => console.log('Example app listening on port 3000!'));
+app.listen(80, () => console.log('Example app listening on port 80!'));
